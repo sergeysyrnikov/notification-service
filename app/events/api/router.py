@@ -4,10 +4,11 @@ from app.events.api.deps import get_events_service
 from app.events.schemas import EventIn, WsClientMessage
 from app.events.service import EventsService
 
-router = APIRouter()
+http_router = APIRouter(prefix="/api/v1/events", tags=["events"])
+ws_router = APIRouter(tags=["events"])
 
 
-@router.post("/events", status_code=200)
+@http_router.post("", status_code=200, summary="Post an event")
 async def post_event(
     event: EventIn,
     service: EventsService = Depends(get_events_service),
@@ -19,7 +20,7 @@ async def post_event(
     return {"ok": True}
 
 
-@router.websocket("/ws")
+@ws_router.websocket("/ws")
 async def websocket_endpoint(
     websocket: WebSocket,
     service: EventsService = Depends(get_events_service),

@@ -15,7 +15,7 @@ def test_post_events_valid_sequence_returns_200() -> None:
     job_id = "http-123"
 
     response = client.post(
-        "/events",
+        "/api/v1/events",
         json={
             "type": "job.started",
             "product": "import",
@@ -27,7 +27,7 @@ def test_post_events_valid_sequence_returns_200() -> None:
     assert response.status_code == 200
 
     response = client.post(
-        "/events",
+        "/api/v1/events",
         json={
             "type": "job.progress",
             "product": "import",
@@ -39,7 +39,7 @@ def test_post_events_valid_sequence_returns_200() -> None:
     assert response.status_code == 200
 
     response = client.post(
-        "/events",
+        "/api/v1/events",
         json={
             "type": "job.finished",
             "product": "import",
@@ -56,7 +56,7 @@ def test_post_events_valid_sequence_returns_200() -> None:
 
 def test_post_events_missing_required_fields_returns_422() -> None:
     client = TestClient(create_app())
-    response = client.post("/events", json={"job_id": "123"})
+    response = client.post("/api/v1/events", json={"job_id": "123"})
     assert response.status_code == 422
 
 
@@ -70,7 +70,7 @@ def test_post_events_invalid_payload_returns_422() -> None:
     job_id = "http-invalid-123"
 
     response = client.post(
-        "/events",
+        "/api/v1/events",
         json={
             "type": "job.progress",
             "product": "import",

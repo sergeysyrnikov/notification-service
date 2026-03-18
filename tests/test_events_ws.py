@@ -16,7 +16,7 @@ def test_ws_subscribe_sends_existing_state_immediately() -> None:
     )
     job_id = "ws-existing-123"
     response = client.post(
-        "/events",
+        "/api/v1/events",
         json={
             "type": "job.started",
             "product": "import",
@@ -48,7 +48,7 @@ def test_ws_receives_broadcast_on_new_event() -> None:
         ws.send_json({"action": "subscribe", "job_id": job_id})
 
         response = client.post(
-            "/events",
+            "/api/v1/events",
             json={
                 "type": "job.progress",
                 "product": "import",
@@ -81,7 +81,7 @@ def test_ws_does_not_receive_events_for_unsubscribed_job_id() -> None:
         ws.send_json({"action": "subscribe", "job_id": subscribed_job_id})
 
         response = client.post(
-            "/events",
+            "/api/v1/events",
             json={
                 "type": "job.progress",
                 "product": "import",
@@ -93,7 +93,7 @@ def test_ws_does_not_receive_events_for_unsubscribed_job_id() -> None:
         assert response.status_code == 200
 
         response = client.post(
-            "/events",
+            "/api/v1/events",
             json={
                 "type": "job.progress",
                 "product": "import",
