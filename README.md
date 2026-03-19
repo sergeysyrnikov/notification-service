@@ -13,14 +13,21 @@
 - Python >= 3.12
 - Docker (опционально, для контейнеризации)
 
+## Ограничения текущей реализации
+
+- **Текущее поведение**: повторные события обрабатываются как новые; deduplication по `job_id` и `timestamp` не выполняется, при `job.progress` / `job.finished` состояние job просто перезаписывается, а если предыдущего состояния нет, создаётся `JobState` со статусом `unknown`. Все данные хранятся в памяти одного процесса (`in-memory` хранилище и прямые HTTP/WS-подключения), поэтому нет общего состояния между несколькими инстансами сервиса.
+- **Возможное развитие для production**: сейчас отсутствуют брокер сообщений (Kafka / NATS / RabbitMQ), внешняя БД или Redis, горизонтальное масштабирование с общим состоянием, формальные гарантии доставки, аутентификация и авторизация, а также политики идемпотентности сообщений. Для добавления этих возможностей потребуется расширить архитектуру: заменить in-memory репозиторий на персистентный (PostgreSQL / Redis), добавить слой приёма/очереди событий (в котором продьюсерами могут быть как HTTP endpoint этого сервиса, так и другие системы, пишущие напрямую в брокер), ввести идентификаторы сообщений и правила deduplication (нужно реализовать, по какому ключу считать сообщения одинаковыми, где и как хранить факт обработки, что делать при дубликате и какие операции считать безопасно повторяемыми), а также реализовать security-слой (JWT/OAuth2 или API-ключи) для HTTP и WebSocket.
+
 ## Локальный запуск
 
 1. Установите зависимости:
+
 ```bash
 uv sync
 ```
 
 2. Запустите сервер:
+
 ```bash
 uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
@@ -36,14 +43,18 @@ uv run pytest
 ## Docker
 
 1. Сборка контейнера:
+
 ```bash
 docker build -t notification-service .
 ```
 
 2. Запуск контейнера:
+
 ```bash
-docker run --rm -p 8000:8000 notification-service
+docker run -d --rm -p 8000:8000 notification-service
 ```
+
+Сервер будет доступен по адресу `http://localhost:8000`.
 
 Примечание: порт внутри контейнера управляется переменной окружения `PORT` (по умолчанию `8000`).
 
@@ -60,10 +71,12 @@ docker run --rm -p 8000:8000 notification-service
 ```
 
 Статусы:
+
 - `200` — событие успешно обработано
 - `422` — ошибка валидации схемы или payload
 
 Поля запроса:
+
 - `type`: один из `job.started`, `job.progress`, `job.finished`
 - `product`: строка
 - `job_id`: строка
@@ -77,6 +90,7 @@ docker run --rm -p 8000:8000 notification-service
 Примеры `curl`:
 
 #### `job.started`
+
 ```bash
 curl -X POST 'http://localhost:8000/api/v1/events' \
   -H 'Content-Type: application/json' \
@@ -90,6 +104,7 @@ curl -X POST 'http://localhost:8000/api/v1/events' \
 ```
 
 #### `job.progress`
+
 ```bash
 curl -X POST 'http://localhost:8000/api/v1/events' \
   -H 'Content-Type: application/json' \
@@ -103,6 +118,7 @@ curl -X POST 'http://localhost:8000/api/v1/events' \
 ```
 
 #### `job.finished` (success)
+
 ```bash
 curl -X POST 'http://localhost:8000/api/v1/events' \
   -H 'Content-Type: application/json' \
