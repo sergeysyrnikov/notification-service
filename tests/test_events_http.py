@@ -12,7 +12,7 @@ def test_post_events_valid_sequence_returns_200() -> None:
         .isoformat()
         .replace("+00:00", "Z")
     )
-    job_id = "http-123"
+    job_id = "123"
 
     response = client.post(
         "/api/v1/events",
@@ -67,7 +67,7 @@ def test_post_events_invalid_payload_returns_422() -> None:
         .isoformat()
         .replace("+00:00", "Z")
     )
-    job_id = "http-invalid-123"
+    job_id = "123"
 
     response = client.post(
         "/api/v1/events",

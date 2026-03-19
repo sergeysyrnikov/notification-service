@@ -1,10 +1,19 @@
 import asyncio
 from collections import defaultdict
+from typing import Any
 
 from fastapi import WebSocket
 
 
 class ConnectionManager:
+    """
+    In-memory WebSocket connection hub.
+
+    Notes:
+    - This is intentionally stateful and lives inside one FastAPI process.
+      If you scale horizontally, you must replace this with a shared broker/storage.
+    """
+
     def __init__(self) -> None:
         self._lock = asyncio.Lock()
         self._subscriptions_by_job_id: dict[str, set[WebSocket]] = defaultdict(set)
@@ -13,7 +22,7 @@ class ConnectionManager:
         async with self._lock:
             self._subscriptions_by_job_id[job_id].add(websocket)
 
-    async def disconnect(self, websocket: WebSocket) -> None:
+    async def disconnect(self, websocket: Any) -> None:
         async with self._lock:
             empty_job_ids: list[str] = []
             for job_id, subscribers in self._subscriptions_by_job_id.items():
@@ -24,7 +33,7 @@ class ConnectionManager:
             for job_id in empty_job_ids:
                 self._subscriptions_by_job_id.pop(job_id, None)
 
-    async def broadcast_json(self, job_id: str, message: dict) -> None:
+    async def broadcast_json(self, job_id: str, message: dict[str, Any]) -> None:
         async with self._lock:
             subscribers = list(self._subscriptions_by_job_id.get(job_id, set()))
 

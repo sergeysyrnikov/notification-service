@@ -12,6 +12,6 @@ class InMemoryJobStateRepository:
         async with self._lock:
             return self._state_by_job_id.get(job_id)
 
-    async def upsert(self, state: JobState) -> None:
+    async def set(self, state: JobState) -> None:
         async with self._lock:
             self._state_by_job_id[state.job_id] = state

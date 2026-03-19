@@ -1,6 +1,6 @@
 from app.events.repository import InMemoryJobStateRepository
 from app.events.service import EventsService
-from app.events.ws_manager import ConnectionManager
+from app.events.ws.manager import ConnectionManager
 
 _repository = InMemoryJobStateRepository()
 _ws_manager = ConnectionManager()

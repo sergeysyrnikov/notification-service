@@ -5,7 +5,6 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 EventType = Literal["job.started", "job.progress", "job.finished"]
 
 

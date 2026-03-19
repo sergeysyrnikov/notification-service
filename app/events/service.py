@@ -10,9 +10,10 @@ from app.events.schemas import (
     EventPayloadFinished,
     EventPayloadProgress,
     EventPayloadStarted,
+    EventType,
     JobState,
 )
-from app.events.ws_manager import ConnectionManager
+from app.events.ws.manager import ConnectionManager
 
 
 class EventsService:
@@ -21,28 +22,31 @@ class EventsService:
         repository: InMemoryJobStateRepository,
         ws_manager: ConnectionManager,
     ) -> None:
-        self._repository = repository
+        self._job_state_repository = repository
         self._ws_manager = ws_manager
 
     async def handle_event(self, event: EventIn) -> JobState:
         state = await self._apply_event(event)
-        await self._repository.upsert(state)
+        await self._job_state_repository.set(state)
 
         await self._ws_manager.broadcast_json(
             job_id=event.job_id,
             message={
                 "job": state.model_dump(mode="json"),
-                "event": event.model_dump(mode="json"),
+                "event_type": event.type,
             },
         )
         return state
 
     async def subscribe(self, websocket: Any, job_id: str) -> None:
         await self._ws_manager.subscribe(websocket, job_id)
-        state = await self._repository.get(job_id)
+        state = await self._job_state_repository.get(job_id)
         if state is None:
             return
-        await websocket.send_json({"job": state.model_dump(mode="json")})
+        event_type = self._get_event_type_by_status(state.status)
+        await websocket.send_json(
+            {"job": state.model_dump(mode="json"), "event_type": event_type}
+        )
 
     async def disconnect(self, websocket: Any) -> None:
         await self._ws_manager.disconnect(websocket)
@@ -60,7 +64,7 @@ class EventsService:
                 updated_at=updated_at,
             )
 
-        existing = await self._repository.get(event.job_id)
+        existing = await self._job_state_repository.get(event.job_id)
         if existing is None:
             existing = JobState(
                 job_id=event.job_id,
@@ -96,6 +100,19 @@ class EventsService:
             )
 
         raise ValueError(f"Unsupported event type: {event.type}")
+
+    def _get_event_type_by_status(self, status: str) -> EventType:
+        """
+        Infer WS `event_type` for a previously stored job state.
+        """
+        if status == "started":
+            return "job.started"
+        if status in {"running", "in_progress"}:
+            return "job.progress"
+        if status in {"success", "failed", "error", "cancelled"}:
+            return "job.finished"
+
+        return "job.progress"
 
 
 def _validate_payload(model: Any, payload: dict[str, Any]) -> Any:
